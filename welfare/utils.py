@@ -2,7 +2,6 @@ from django.contrib.auth.models import User
 from django.utils.text import slugify
 from .models import AdminUser, Contribution, Disbursement
 import firebase_admin
-from firebase_admin import credentials, messaging
 import os
 from email.mime.image import MIMEImage
 from django.core.mail import EmailMessage
@@ -264,29 +263,6 @@ def create_notification(user, title, message):
 
 
 # Initialize app only once
-if not firebase_admin._apps:
-    cred = credentials.Certificate(
-        os.path.join('firebase', 'serviceAccountKey.json')  # adjust path!
-    )
-    firebase_admin.initialize_app(cred)
-
-def send_push_notification(registration_tokens, title, body, data=None):
-    """ Send push notification via FCM HTTP v1 """
-
-    if isinstance(registration_tokens, str):
-        registration_tokens = [registration_tokens]
-
-    message = messaging.MulticastMessage(
-        notification=messaging.Notification(
-            title=title,
-            body=body
-        ),
-        data=data or {},
-        tokens=registration_tokens
-    )
-
-    response = messaging.send_multicast(message)
-    return response.success_count, response.failure_count
 
 def send_finance_report(email, transactions, from_dt, to_dt, export_format='pdf'):
     # 1. Generate the file
