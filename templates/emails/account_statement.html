@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Account Statement</title>
+</head>
+<body style="font-family: Arial, sans-serif; background-color: #f4f4f4; margin: 0; padding: 0;">
+    <table align="center" border="0" cellpadding="0" cellspacing="0" width="600" style="background-color: #ffffff; margin-top: 20px; border-radius: 8px; overflow: hidden;">
+        <!-- Logo -->
+        <tr>
+            <td align="center" style="padding: 20px 0 10px 0;">
+                {% comment %}<img src="https://yourdomain.com/static/branding/heavensconnect_logo.png" alt="HeavensConnect" width="100" style="display: block;" />{% endcomment %}
+                <img src="cid:logo" alt="HeavensConnect" width="100" />
+            </td>
+        </tr>
+        <!-- Header -->
+        <tr>
+            <td bgcolor="#6C5CE7" style="padding: 30px 20px 20px 20px; color: #ffffff; text-align: center;">
+                <h1 style="margin: 0; font-size: 24px;">Your Account Statement is Ready</h1>
+            </td>
+        </tr>
+        <!-- Content -->
+        <tr>
+            <td style="padding: 20px 30px 30px 30px;">
+                <p>Dear {{ full_name }},</p>
+                <p>We have attached your account statement for the period <strong>{{ from_date }}</strong> to <strong>{{ to_date }}</strong>.</p>
+                <p>You can download and review your statement from the attached file or by accessing your profile within the HeavensConnect Welfare App.</p>
+
+                <!-- Button -->
+                <p style="text-align: center; margin: 30px 0;">
+                    <a href="#" style="background-color: #6C5CE7; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">
+                        Download Statement
+                    </a>
+                </p>
+
+                <p>If you have any questions or need further assistance, please contact us at
+                    <a href="mailto:{{ support_email }}" style="color: #6C5CE7;">{{ support_email }}</a>.
+                </p>
+                <p>Thank you for being a valued part of HeavensConnect Welfare App.</p>
+                <p>Regards,<br>The HeavensConnect Team</p>
+            </td>
+        </tr>
+        <!-- Footer -->
+        <tr>
+            <td bgcolor="#f4f4f4" style="padding: 10px 20px; text-align: center; color: #777;">
+                <small>&copy; {{ now|date:"Y" }} HeavensConnect. All rights reserved.</small>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>

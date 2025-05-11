@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Finance Report</title>
+</head>
+<body style="font-family: Arial, sans-serif; background-color: #f4f4f4; margin: 0; padding: 0;">
+    <table align="center" border="0" cellpadding="0" cellspacing="0" width="600" style="background-color: #ffffff; margin-top: 20px; border-radius: 8px; overflow: hidden;">
+        <!-- Logo -->
+        <tr>
+            <td align="center" style="padding: 20px 0 10px 0;">
+                <img src="cid:logo" alt="HeavensConnect" width="100" />
+            </td>
+        </tr>
+        <!-- Header -->
+        <tr>
+            <td bgcolor="#6C5CE7" style="padding: 30px 20px 20px 20px; color: #ffffff; text-align: center;">
+                <h1 style="margin: 0; font-size: 22px;">Finance Report Generated</h1>
+            </td>
+        </tr>
+        <!-- Content -->
+        <tr>
+            <td style="padding: 20px 30px 30px 30px;">
+                <p>Hello Admin,</p>
+                <p>
+                    Your requested finance report covering the period from <strong>{{ from_date }}</strong> to
+                    <strong>{{ to_date }}</strong> has been generated successfully.
+                </p>
+                <p>
+                    Please find the report attached to this email. You can also view it directly in the
+                    <strong>HeavensConnect Welfare App</strong> under Finance Reports.
+                </p>
+
+                <p style="margin-top: 20px;">
+                    If you need any further assistance or have questions, feel free to reach out to us at
+                    <a href="mailto:welfare@openedheavenschapel.co.uk" style="color: #6C5CE7;">welfare@openedheavenschapel.co.uk</a>.
+                </p>
+
+                <p>Thank you for using HeavensConnect.</p>
+
+                <p>Kind regards,<br>The HeavensConnect Team</p>
+            </td>
+        </tr>
+        <!-- Footer -->
+        <tr>
+            <td bgcolor="#f4f4f4" style="padding: 10px 20px; text-align: center; color: #777;">
+                <small>&copy; {{ now|date:"Y" }} HeavensConnect. All rights reserved.</small>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>
