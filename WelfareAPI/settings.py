@@ -14,9 +14,7 @@ from pathlib import Path
 
 import os
 import dj_database_url
-
-
-
+from django.contrib import staticfiles
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -31,8 +29,8 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 SECRET_KEY = os.getenv("SECRET_KEY")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-#DEBUG = True
-DEBUG = os.getenv("DEBUG", "False") == "True"
+DEBUG = True
+#DEBUG = os.getenv("DEBUG", "False") == "True"
 
 ALLOWED_HOSTS = ['heavensconnect.onrender.com','192.168.1.174', 'localhost', '127.0.0.1']
 
