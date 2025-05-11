@@ -34,7 +34,7 @@ SECRET_KEY = os.getenv("SECRET_KEY")
 #DEBUG = True
 DEBUG = os.getenv("DEBUG", "False") == "True"
 
-ALLOWED_HOSTS = ['192.168.1.174', 'localhost', '127.0.0.1','https://heavensconnect.onrender.com']
+ALLOWED_HOSTS = ['heavensconnect.onrender.com','192.168.1.174', 'localhost', '127.0.0.1']
 
 
 # Application definition
