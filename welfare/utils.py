@@ -1,16 +1,21 @@
 from django.contrib.auth.models import User
 from django.utils.text import slugify
-from .models import AdminUser, Contribution, Disbursement
-import firebase_admin
+from .models import AdminUser
 import os
 from email.mime.image import MIMEImage
 from django.core.mail import EmailMessage
 from django.template.loader import render_to_string
 from django.conf import settings
 from datetime import datetime
-import pandas as pd
-import openpyxl
+from openpyxl import Workbook
+from openpyxl.styles import Alignment
 from openpyxl.styles import Font, PatternFill
+from reportlab.lib import colors
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.units import inch
+from decimal import Decimal
 
 
 def create_admin_user(full_name, phone_number, role, email):
@@ -303,20 +308,15 @@ def send_finance_report(email, transactions, from_dt, to_dt, export_format='pdf'
     message.send()
 
 
-def generate_finance_report_pdf_bk(transactions, from_dt, to_dt):
-    from reportlab.lib import colors
-    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
-    from reportlab.lib.pagesizes import A4
-    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-    from reportlab.lib.units import inch
-    import os
 
+
+def generate_finance_report_pdf(transactions, from_dt, to_dt):
     file_name = f"finance_report_{datetime.now().strftime('%Y%m%d%H%M%S')}.pdf"
     folder = os.path.join(settings.MEDIA_ROOT, 'finance_reports')
     os.makedirs(folder, exist_ok=True)
     file_path = os.path.join(folder, file_name)
 
-    doc = SimpleDocTemplate(file_path, pagesize=A4)
+    doc = SimpleDocTemplate(file_path, pagesize=A4, leftMargin=40, rightMargin=40, topMargin=40, bottomMargin=40)
     styles = getSampleStyleSheet()
 
     title_style = ParagraphStyle(
@@ -327,111 +327,16 @@ def generate_finance_report_pdf_bk(transactions, from_dt, to_dt):
         textColor=colors.HexColor('#6C5CE7')
     )
 
-    elements = []
-
-    # Title
-    elements.append(Paragraph("HEAVENSCONNECT FINANCE REPORT", title_style))
-    elements.append(Paragraph(
-        f"Period: {from_dt.strftime('%d %b %Y')} - {to_dt.strftime('%d %b %Y')}",
-        styles['Normal']
-    ))
-    elements.append(Spacer(1, 12))
-
-    # Table headers
-    data = [['Date', 'Type', 'Amount', 'Payment Method', 'Category']]
-    for txn in transactions:
-        date = txn['date'].strftime('%d %b %Y')
-        type_label = txn['type'].capitalize()
-        amount = f"£{txn['amount']:.2f}"
-        payment = txn.get('payment_method', 'N/A').capitalize()
-        category = txn.get('category', 'N/A').replace('_', ' ').capitalize()
-
-        data.append([date, type_label, amount, payment, category])
-
-    txn_table = Table(data, colWidths=[1.2 * inch] * 5)
-    txn_table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#6C5CE7')),
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
-        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
-        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-        ('TOPPADDING', (1, 1), (-1, -1), 6)
-    ]))
-    elements.append(txn_table)
-
-    # Watermark
-    def add_watermark(canvas_obj, doc_obj):
-        canvas_obj.saveState()
-        canvas_obj.setFont('Helvetica-Bold', 50)
-        canvas_obj.setFillColorRGB(0.9, 0.9, 0.9, alpha=0.2)
-        canvas_obj.drawCentredString(A4[0] / 2, A4[1] / 2, "HeavensConnect")
-        canvas_obj.restoreState()
-
-    doc.build(elements, onFirstPage=add_watermark, onLaterPages=add_watermark)
-
-    return file_path
-
-def generate_finance_report_excel_bk(transactions, from_dt, to_dt):
-    file_name = f"finance_report_{datetime.now().strftime('%Y%m%d%H%M%S')}.xlsx"
-    folder = os.path.join(settings.MEDIA_ROOT, 'finance_reports')
-    os.makedirs(folder, exist_ok=True)
-    file_path = os.path.join(folder, file_name)
-
-    wb = openpyxl.Workbook()
-    ws = wb.active
-    ws.title = "Finance Report"
-
-    # Header
-    headers = ['Date', 'Type', 'Amount', 'Payment Method', 'Category']
-    header_font = Font(bold=True, color="FFFFFF")
-    fill = PatternFill(start_color="6C5CE7", end_color="6C5CE7", fill_type="solid")
-
-    ws.append(headers)
-    for col in range(1, len(headers) + 1):
-        ws.cell(row=1, column=col).font = header_font
-        ws.cell(row=1, column=col).fill = fill
-
-    # Data rows
-    for txn in transactions:
-        date = txn['date'].strftime('%d %b %Y')
-        type_label = txn['type'].capitalize()
-        amount = f"£{txn['amount']:.2f}"
-        payment = txn.get('payment_method', 'N/A').capitalize()
-        category = txn.get('category', 'N/A').replace('_', ' ').capitalize()
-
-        ws.append([date, type_label, amount, payment, category])
-
-    # Auto-width columns
-    for column_cells in ws.columns:
-        length = max(len(str(cell.value) or "") for cell in column_cells)
-        ws.column_dimensions[column_cells[0].column_letter].width = length + 2
-
-    wb.save(file_path)
-    return file_path
-
-
-def generate_finance_report_pdf(transactions, from_dt, to_dt):
-    from reportlab.lib import colors
-    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
-    from reportlab.lib.pagesizes import A4
-    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-    from reportlab.lib.units import inch
-    from decimal import Decimal
-    import os
-
-    file_name = f"finance_report_{datetime.now().strftime('%Y%m%d%H%M%S')}.pdf"
-    folder = os.path.join(settings.MEDIA_ROOT, 'finance_reports')
-    os.makedirs(folder, exist_ok=True)
-    file_path = os.path.join(folder, file_name)
-
-    doc = SimpleDocTemplate(file_path, pagesize=A4)
-    styles = getSampleStyleSheet()
-    title_style = ParagraphStyle(
-        'Title', parent=styles['Title'], fontSize=20, spaceAfter=12, textColor=colors.HexColor('#6C5CE7')
+    desc_style = ParagraphStyle(
+        'desc',
+        fontSize=9,
+        leading=11,
+        spaceAfter=4
     )
 
     elements = []
+
+    # Title
     elements.append(Paragraph("HEAVENSCONNECT FINANCE REPORT", title_style))
     elements.append(Paragraph(f"Period: {from_dt.strftime('%d %b %Y')} - {to_dt.strftime('%d %b %Y')}", styles['Normal']))
     elements.append(Spacer(1, 12))
@@ -440,54 +345,69 @@ def generate_finance_report_pdf(transactions, from_dt, to_dt):
     money_in = sum(txn['amount'] for txn in transactions if txn['type'] == 'income')
     money_out = sum(txn['amount'] for txn in transactions if txn['type'] == 'expense')
     opening_balance = Decimal('0.00')
-
-    closing_balance = Decimal(str(opening_balance)) + Decimal(str(money_in)) - Decimal(str(money_out))
+    closing_balance = opening_balance + Decimal(str(money_in)) - Decimal(str(money_out))
 
     summary_data = [
         ['Opening Balance', 'Money In', 'Money Out', 'Closing Balance'],
-        [f"\u00a3{opening_balance:.2f}", f"\u00a3{money_in:.2f}", f"\u00a3{money_out:.2f}", f"\u00a3{closing_balance:.2f}"]
+        [f"£{opening_balance:.2f}", f"£{money_in:.2f}", f"£{money_out:.2f}", f"£{closing_balance:.2f}"]
     ]
+
     summary_table = Table(summary_data)
     summary_table.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#6C5CE7')),
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
         ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
         ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (1, 1), (-1, -1), 10),
         ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 10),
+        ('TOPPADDING', (0, 0), (-1, 0), 6),
     ]))
     elements.append(summary_table)
-    elements.append(Spacer(1, 12))
+    elements.append(Spacer(1, 18))
 
-    # Detailed transactions
-    data = [['Date', 'Type', 'Amount', 'Payment Method', 'Category', 'Balance']]
+    # Transaction Table Header
+    data = [['Date', 'Type', 'Amount', 'Description', 'Balance']]
     running_balance = opening_balance
+
     for txn in transactions:
         if isinstance(txn['date'], str):
             txn['date'] = datetime.fromisoformat(txn['date'].replace('Z', '+00:00'))
+
         date = txn['date'].strftime('%d %b %Y')
         type_label = txn['type'].capitalize()
         amount = txn['amount']
-        payment = txn.get('payment_method', 'N/A').capitalize()
-        category = txn.get('category', 'N/A').replace('_', ' ').capitalize()
+        description_text = txn.get('description', 'N/A')
+        description = Paragraph(description_text, desc_style)
         running_balance += amount if txn['type'] == 'income' else -amount
-        data.append([date, type_label, f"\u00a3{amount:.2f}", payment, category, f"\u00a3{running_balance:.2f}"])
+        balance = f"£{running_balance:.2f}"
 
-    txn_table = Table(data, colWidths=[1.1*inch]*6)
+        data.append([date, type_label, f"£{amount:.2f}", description, balance])
+
+    # Adjusted column widths
+    col_widths = [1.2 * inch, 0.9 * inch, 1.1 * inch, 3.4 * inch, 1.2 * inch]
+
+    txn_table = Table(data, colWidths=col_widths, repeatRows=1)
     txn_table.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#6C5CE7')),
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
-        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('ALIGN', (0, 0), (2, -1), 'CENTER'),  # Center for Date, Type, Amount
+        ('ALIGN', (3, 1), (3, -1), 'LEFT'),    # Description left-aligned
+        ('ALIGN', (4, 1), (4, -1), 'RIGHT'),   # Balance right-aligned
         ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
-        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-        ('TOPPADDING', (1, 1), (-1, -1), 6)
+        ('FONTSIZE', (0, 0), (-1, -1), 9),
+        ('GRID', (0, 0), (-1, -1), 0.4, colors.grey),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 10),
+        ('TOPPADDING', (0, 0), (-1, 0), 6),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
     ]))
     elements.append(txn_table)
 
+    # Watermark
     def add_watermark(canvas_obj, doc_obj):
         canvas_obj.saveState()
         canvas_obj.setFont('Helvetica-Bold', 50)
-        canvas_obj.setFillColorRGB(0.9, 0.9, 0.9, alpha=0.2)
+        canvas_obj.setFillColorRGB(0.9, 0.9, 0.9, alpha=0.1)
         canvas_obj.drawCentredString(A4[0] / 2, A4[1] / 2, "HeavensConnect")
         canvas_obj.restoreState()
 
@@ -500,11 +420,11 @@ def generate_finance_report_excel(transactions, from_dt, to_dt):
     os.makedirs(folder, exist_ok=True)
     file_path = os.path.join(folder, file_name)
 
-    wb = openpyxl.Workbook()
+    wb = Workbook()
     ws = wb.active
     ws.title = "Finance Report"
 
-    headers = ['Date', 'Type', 'Amount', 'Payment Method', 'Category', 'Balance']
+    headers = ['Date', 'Type', 'Amount', 'Description', 'Balance']
     header_font = Font(bold=True, color="FFFFFF")
     fill = PatternFill(start_color="6C5CE7", end_color="6C5CE7", fill_type="solid")
 
@@ -513,22 +433,34 @@ def generate_finance_report_excel(transactions, from_dt, to_dt):
         ws.cell(row=1, column=col).font = header_font
         ws.cell(row=1, column=col).fill = fill
 
-    running_balance = 0.0
+    running_balance = Decimal('0.00')
+
     for txn in transactions:
         if isinstance(txn['date'], str):
             txn['date'] = datetime.fromisoformat(txn['date'].replace('Z', '+00:00'))
+
         date = txn['date'].strftime('%d %b %Y')
         type_label = txn['type'].capitalize()
-        amount = txn['amount']
-        payment = txn.get('payment_method', 'N/A').capitalize()
-        category = txn.get('category', 'N/A').replace('_', ' ').capitalize()
-        running_balance += amount if txn['type'] == 'income' else -amount
+        amount = Decimal(str(txn['amount']))  # Ensure Decimal
+        description = txn.get('description', 'N/A').capitalize()
 
-        ws.append([date, type_label, f"\u00a3{amount:.2f}", payment, category, f"\u00a3{running_balance:.2f}"])
+        if txn['type'] == 'income':
+            running_balance += amount
+        else:
+            running_balance -= amount
 
+        ws.append([
+            date,
+            type_label,
+            f"£{amount:.2f}",
+            description,
+            f"£{running_balance:.2f}"
+        ])
+
+    # Auto-size columns
     for column_cells in ws.columns:
-        length = max(len(str(cell.value) or "") for cell in column_cells)
-        ws.column_dimensions[column_cells[0].column_letter].width = length + 2
+        max_length = max(len(str(cell.value or "")) for cell in column_cells)
+        ws.column_dimensions[column_cells[0].column_letter].width = max_length + 2
 
     wb.save(file_path)
     return file_path

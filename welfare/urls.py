@@ -4,7 +4,8 @@ from rest_framework.routers import DefaultRouter
 from .views import MemberViewSet, ContributionViewSet, WelfareRequestViewSet, DisbursementViewSet, AdminUserViewSet, \
     MemberProfileView, ForgotPasswordView, ResetPasswordView, ChangePasswordView, AdminDashboardView, \
     PendingMemberViewSet, PendingRecordsView, send_verification_code, verify_email_code, RequestAccountStatementView, \
-    NotificationViewSet, save_fcm_token, FinanceSummaryView, FinanceTransactionsView, ExportFinanceReportView
+    NotificationViewSet, save_fcm_token, FinanceSummaryView, FinanceTransactionsView, ExportFinanceReportView, \
+    SystemSettingViewSet
 
 router = DefaultRouter()
 router.register(r'members', MemberViewSet)
@@ -13,8 +14,8 @@ router.register(r'welfare-requests', WelfareRequestViewSet)
 router.register(r'disbursements', DisbursementViewSet)
 router.register(r'admin-users', AdminUserViewSet)
 router.register(r'pending-members', PendingMemberViewSet)
-router.register('notifications', NotificationViewSet, basename='notification')
-
+router.register(r'notifications', NotificationViewSet, basename='notification')
+router.register(r'settings', SystemSettingViewSet, basename='settings')
 
 
 urlpatterns = [

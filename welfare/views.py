@@ -12,9 +12,11 @@ from rest_framework.views import APIView
 from django.contrib.auth.tokens import default_token_generator
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.utils.encoding import force_bytes
-from .models import Member, Contribution, WelfareRequest, Disbursement, AdminUser, PendingMember, Notification
+from .models import Member, Contribution, WelfareRequest, Disbursement, AdminUser, PendingMember, Notification, \
+    SystemSetting
 from .serializers import MemberSerializer, ContributionSerializer, WelfareRequestSerializer, DisbursementSerializer, \
-    AdminUserSerializer, CustomTokenObtainPairSerializer, PendingMemberSerializer, NotificationSerializer
+    AdminUserSerializer, CustomTokenObtainPairSerializer, PendingMemberSerializer, NotificationSerializer, \
+    SystemSettingSerializer
 from .utils import create_admin_user, send_membership_email, send_password_reset_email, send_verification_code_email, \
     generate_statement_pdf, send_statement_email, create_notification, send_finance_report, generate_finance_report_pdf, \
     generate_finance_report_excel
@@ -30,7 +32,7 @@ from rest_framework.exceptions import ValidationError
 from django.db.models import Sum
 from django.db.models.functions import TruncMonth
 from django.utils.dateparse import parse_date
-
+from django.conf import settings
 
 
 
@@ -96,7 +98,7 @@ class MemberProfileView(APIView):
 
 
 class ForgotPasswordView(APIView):
-    permission_classes = [AllowAny]  # <-- This allows the endpoint to be accessed without authentication
+    permission_classes = [AllowAny]
 
     def post(self, request):
         identifier = request.data.get('identifier')
@@ -108,9 +110,9 @@ class ForgotPasswordView(APIView):
         uid = urlsafe_base64_encode(force_bytes(user.pk))
         token = default_token_generator.make_token(user)
 
-        reset_link = f"http://192.168.1.174:3000/reset-password/{uid}/{token}/"
+        frontend_url = request.headers.get('X-Frontend-URL', getattr(settings, 'FRONTEND_RESET_URL', 'http://localhost:3000'))
+        reset_link = f"{frontend_url}/reset-password/{uid}/{token}/"
 
-        # Send email using your custom email template
         send_password_reset_email(user.email, user.username, reset_link)
 
         return Response({'message': 'Password reset link sent to your email.'})
@@ -866,40 +868,45 @@ class ExportFinanceReportView(APIView):
         if not from_date or not to_date:
             return Response({'detail': 'Both from_date and to_date are required.'}, status=400)
 
-        contributions = Contribution.objects.filter(
+        # Use select_related for performance
+        contributions = Contribution.objects.select_related('member').filter(
             status='verified',
             created_at__date__range=(from_date, to_date)
-        ).values('amount', 'created_at', 'payment_method')
+        )
 
-        disbursements = Disbursement.objects.filter(
+        disbursements = Disbursement.objects.select_related('member').filter(
             disbursed_at__date__range=(from_date, to_date)
-        ).values('amount', 'disbursed_at', 'payment_method', 'category')
+        )
 
         transactions = []
 
+        # Process contributions
         for c in contributions:
             transactions.append({
                 'type': 'income',
-                'amount': c['amount'],
-                'date': c['created_at'],
-                'payment_method': c.get('payment_method', ''),
+                'amount': c.amount,
+                'date': c.created_at,
+                'payment_method': c.payment_method,
                 'category': 'Contribution',
-                'description': f"{c.get('payment_method', '').capitalize()} Contribution"
+                'description': f"{c.payment_method.capitalize()} contribution by {c.member.full_name}"
             })
 
+        # Process disbursements
         for d in disbursements:
+            recipient = d.member.full_name if d.member else d.recipient_name or "Unregistered Recipient"
             transactions.append({
                 'type': 'expense',
-                'amount': d['amount'],
-                'date': d['disbursed_at'],
-                'payment_method': d.get('payment_method', ''),
-                'category': d.get('category', ''),
-                'description': f"{d.get('category', '').capitalize()} Disbursement"
+                'amount': d.amount,
+                'date': d.disbursed_at,
+                'payment_method': d.payment_method,
+                'category': d.category or "Other",
+                'description': f"{d.category.capitalize() if d.category else 'General'} disbursement to {recipient}"
             })
 
         # Sort by date
         transactions.sort(key=lambda x: x['date'])
 
+        # Trigger the report generator
         send_finance_report(
             request.user.email,
             transactions,
@@ -910,3 +917,7 @@ class ExportFinanceReportView(APIView):
 
         return Response({'detail': 'Your report is being generated and will be emailed shortly.'})
 
+class SystemSettingViewSet(viewsets.ModelViewSet):
+    queryset = SystemSetting.objects.all()
+    serializer_class = SystemSettingSerializer
+    permission_classes = [IsAuthenticated]

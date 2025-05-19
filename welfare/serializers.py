@@ -1,7 +1,8 @@
 
 from rest_framework import serializers
 from django.contrib.auth.models import User
-from .models import Member, Contribution, WelfareRequest, Disbursement, AdminUser, PendingMember, Notification
+from .models import Member, Contribution, WelfareRequest, Disbursement, AdminUser, PendingMember, Notification, \
+    SystemSetting
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from django.contrib.auth import authenticate
 
@@ -145,6 +146,13 @@ class NotificationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Notification
         fields = ['id', 'title', 'message', 'created_at', 'read']
+
+# serializers.py
+class SystemSettingSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SystemSetting
+        fields = ['id', 'key', 'value']
+
 
 
 

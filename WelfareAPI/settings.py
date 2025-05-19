@@ -15,6 +15,7 @@ from pathlib import Path
 import os
 import dj_database_url
 from django.contrib import staticfiles
+from datetime import timedelta
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -74,6 +75,14 @@ REST_FRAMEWORK = {
     ]
 }
 
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=30),   # Increase from 5 mins to 60 mins
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
+    "ROTATE_REFRESH_TOKENS": True,
+    "BLACKLIST_AFTER_ROTATION": True,
+    "AUTH_HEADER_TYPES": ("Bearer",),
+    "AUTH_TOKEN_CLASSES": ("rest_framework_simplejwt.tokens.AccessToken",),
+}
 
 ROOT_URLCONF = 'WelfareAPI.urls'
 
@@ -155,3 +164,12 @@ EMAIL_HOST_USER = 'welfare@openedheavenschapel.co.uk'  # Full email address
 EMAIL_HOST_PASSWORD = 'Ifeanyi/1000'              # Your email password
 EMAIL_USE_SSL = True                              # Enable SSL (since you're using port 465)
 DEFAULT_FROM_EMAIL = 'welfare@openedheavenschapel.co.uk'
+
+
+
+
+
+
+
+FRONTEND_RESET_URL = 'http://192.168.1.174:3000'
+
