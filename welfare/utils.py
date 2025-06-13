@@ -69,6 +69,7 @@ def send_password_reset_email(email, username, reset_link):
         'username': username,
         'reset_link': reset_link
     })
+    print("reset link-==========================================",reset_link)
     email = EmailMessage(subject, html_content, 'welfare@openedheavenschapel.co.uk', [email])
     email.content_subtype = 'html'
     email.send()

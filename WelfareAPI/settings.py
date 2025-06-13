@@ -66,7 +66,8 @@ MIDDLEWARE = [
 ]
 CORS_ALLOW_ALL_ORIGINS = True
 CSRF_TRUSTED_ORIGINS = [
-    "https://heavensconnect-83e8c.web.app"
+    "https://heavensconnect-83e8c.web.app",
+    "https://heavensconnect-83e8c.firebaseapp.com"
 ]
 
 
@@ -179,5 +180,5 @@ DEFAULT_FROM_EMAIL = 'welfare@openedheavenschapel.co.uk'
 
 
 
-FRONTEND_RESET_URL = 'http://192.168.1.174:3000'
+FRONTEND_RESET_URL = 'https://heavensconnect-83e8c.firebaseapp.com'
 

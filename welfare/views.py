@@ -11,7 +11,7 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework.views import APIView
 from django.contrib.auth.tokens import default_token_generator
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
-from django.utils.encoding import force_bytes
+from django.utils.encoding import force_bytes, force_str
 from .models import Member, Contribution, WelfareRequest, Disbursement, AdminUser, PendingMember, Notification, \
     SystemSetting
 from .serializers import MemberSerializer, ContributionSerializer, WelfareRequestSerializer, DisbursementSerializer, \
@@ -107,33 +107,40 @@ class ForgotPasswordView(APIView):
         if not user:
             return Response({'detail': 'User not found.'}, status=status.HTTP_404_NOT_FOUND)
 
-        uid = urlsafe_base64_encode(force_bytes(user.pk))
+        uidb64 = urlsafe_base64_encode(force_bytes(user.pk))
         token = default_token_generator.make_token(user)
 
-        frontend_url = request.headers.get('X-Frontend-URL', getattr(settings, 'FRONTEND_RESET_URL', 'http://localhost:3000'))
-        reset_link = f"{frontend_url}/reset-password/{uid}/{token}/"
+        frontend_base = request.headers.get('X-Frontend-URL', getattr(settings, 'FRONTEND_RESET_URL', 'https://heavensconnect-83e8c.web.app')).rstrip('/')
+        reset_link = f"{frontend_base}/reset-password?uid={uidb64}&token={token}"
 
         send_password_reset_email(user.email, user.username, reset_link)
 
         return Response({'message': 'Password reset link sent to your email.'})
 
+
 class ResetPasswordView(APIView):
+    permission_classes = [AllowAny]
+
     def post(self, request):
         uidb64 = request.data.get('uid')
         token = request.data.get('token')
         new_password = request.data.get('new_password')
 
+        if not all([uidb64, token, new_password]):
+            return Response({'detail': 'Missing required fields.'}, status=status.HTTP_400_BAD_REQUEST)
+
         try:
-            uid = urlsafe_base64_decode(uidb64).decode()
+            uid = force_str(urlsafe_base64_decode(uidb64))
             user = User.objects.get(pk=uid)
         except (User.DoesNotExist, ValueError, TypeError):
-            return Response({'detail': 'Invalid link.'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'detail': 'Invalid reset link.'}, status=status.HTTP_400_BAD_REQUEST)
 
         if not default_token_generator.check_token(user, token):
             return Response({'detail': 'Invalid or expired token.'}, status=status.HTTP_400_BAD_REQUEST)
 
         user.set_password(new_password)
         user.save()
+
         return Response({'message': 'Password reset successful.'})
 
 class ChangePasswordView(APIView):
@@ -365,13 +372,10 @@ class PendingMemberViewSet(viewsets.ModelViewSet):
             context={
                 'title': 'Membership Request Rejected',
                 'message': f'Dear {pending_member.full_name}, your membership request was rejected.<br><strong>Reason:</strong> {reason}',
+                'current_year': datetime.now().year,
             }
         )
-        create_notification(
-            pending_member.user,
-            "Membership Rejected",
-            f"Your membership request was rejected. Reason: {reason}"
-        )
+
 
         pending_member.delete()
 

@@ -1,0 +1,74 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyc
+
+# Virtual environment
+env/
+venv/
+ENV/
+.VENV/
+.venv/
+
+# Django stuff
+*.log
+*.pot
+*.pyc
+db.sqlite3
+media/
+staticfiles/
+local_settings.py
+settings_local.py
+
+# Environment variables
+.env
+.env.*
+
+# VSCode / IDEs
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Migrations (optional if auto-generated)
+*/migrations/__pycache__/
+*/migrations/*.pyc
+*/migrations/*.pyo
+*/migrations/*.pyd
+
+# Coverage/testing
+htmlcov/
+.coverage
+.tox/
+nosetests.xml
+coverage.xml
+*.cover
+.pytest_cache/
+
+# Build/dist
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Pycharm
+*.iml
+.idea/
+
+# Docker
+*.pid
+
+# MySQL/Postgres dumps
+*.sql
+
+# Pip
+pip-log.txt
+
+# npm (if you use frontend in same repo)
+node_modules/

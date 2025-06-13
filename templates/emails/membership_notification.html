@@ -17,7 +17,7 @@
             <h2>{{ title }}</h2>
         </div>
         <div class="content">
-            <p>{{ message }}</p>
+            <p>{{ message|safe }}</p>
             {% if username and password %}
                 <div class="credentials">
                     <p><strong>Username:</strong> {{ username }}</p>
