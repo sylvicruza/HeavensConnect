@@ -12,13 +12,18 @@ class AdminUser(models.Model):
         ('viewer', 'Viewer'),
     ]
 
-    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='admin_profile')
     full_name = models.CharField(max_length=255, unique=True)  # Unique & required
     email = models.EmailField(unique=True)  # ✅ Added email
     role = models.CharField(max_length=20, choices=ROLE_CHOICES)
     phone_number = models.CharField(max_length=15, unique=True)  # Unique & required
     last_login_at = models.DateTimeField(auto_now=True)
     fcm_token = models.CharField(max_length=255, blank=True, null=True)
+
+    def delete(self, *args, **kwargs):
+        user = self.user
+        super().delete(*args, **kwargs)
+        user.delete()
 
     def __str__(self):
         return self.full_name
@@ -69,6 +74,11 @@ class Member(models.Model):
             self.user = new_user
 
         super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        user = self.user
+        super().delete(*args, **kwargs)
+        user.delete()
 
     def __str__(self):
         return self.full_name
