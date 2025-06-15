@@ -33,6 +33,8 @@ from django.db.models import Sum
 from django.db.models.functions import TruncMonth
 from django.utils.dateparse import parse_date
 from django.conf import settings
+import uuid
+from calendar import month_name
 
 
 
@@ -397,38 +399,45 @@ class ContributionViewSet(viewsets.ModelViewSet):
         base_month = int(request.data.get('month', now().month))
         base_year = int(request.data.get('year', now().year))
 
-        # Validate basic contribution data
+        # Validate and parse the total amount
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
+        total_amount = float(serializer.validated_data['amount'])
+        if number_of_months < 1:
+            return Response({'detail': 'Number of months must be at least 1.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        monthly_amount = round(total_amount / number_of_months, 2)  # Round to 2 decimal places
+
+        shared_batch_id = uuid.uuid4()
         contributions = []
         month = base_month
         year = base_year
 
-        for _ in range(number_of_months):
+        for i in range(number_of_months):
             contribution_data = serializer.validated_data.copy()
-            contribution_data['month'] = month
-            contribution_data['year'] = year
             contribution = Contribution.objects.create(
                 member=contribution_data['member'],
-                amount=contribution_data['amount'],
+                amount=monthly_amount,
                 payment_method=contribution_data['payment_method'],
                 transaction_ref=contribution_data.get('transaction_ref', None),
                 proof_of_payment=contribution_data.get('proof_of_payment', None),
                 status=contribution_data.get('status', 'pending'),
                 recorded_by=request.user,
                 month=month,
-                year=year
+                year=year,
+                batch_id=shared_batch_id,
             )
             contributions.append(contribution)
 
-            # Increment month & handle year rollover
+            # Increment month with year rollover
             month += 1
             if month > 12:
                 month = 1
                 year += 1
 
-        return Response({'detail': f'{number_of_months} contribution(s) created successfully.'}, status=status.HTTP_201_CREATED)
+        return Response({'detail': f'{number_of_months} contribution(s) created successfully.'},
+                        status=status.HTTP_201_CREATED)
 
     @action(detail=False, methods=['get'], url_path='my')
     def my_contributions(self, request):
@@ -518,6 +527,57 @@ class ContributionViewSet(viewsets.ModelViewSet):
         )
 
         return Response({'detail': 'Contribution rejected with reason.'})
+
+    @action(detail=False, methods=['get'], url_path='pending-batches')
+    def pending_batches(self, request):
+        contributions = Contribution.objects.filter(status='pending')
+        grouped = {}
+
+        for c in contributions:
+            key = str(c.batch_id)
+            if key not in grouped:
+                grouped[key] = {
+                    'batch_id': key,
+                    'member': c.member.id,
+                    'member_name': c.member.full_name,
+                    'transaction_ref': c.transaction_ref,
+                    'proof_of_payment': c.proof_of_payment.url if c.proof_of_payment else None,
+                    'total_amount': 0,
+                    'months': [],
+                    'contribution_ids': [],
+                }
+            grouped[key]['total_amount'] += float(c.amount)
+            grouped[key]['months'].append(f"{month_name[c.month]} {c.year}")
+            grouped[key]['contribution_ids'].append(c.id)
+
+        return Response(list(grouped.values()))
+
+    @action(detail=False, methods=['post'], url_path='verify-batch')
+    def verify_batch(self, request):
+        batch_id = request.data.get('batch_id')
+        if not batch_id:
+            return Response({'detail': 'Batch ID is required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        contributions = Contribution.objects.filter(batch_id=batch_id, status='pending')
+        if not contributions.exists():
+            return Response({'detail': 'No pending contributions for this batch.'}, status=404)
+
+        for c in contributions:
+            c.status = 'verified'
+            c.rejection_reason = ''
+            c.save()
+
+        member = contributions.first().member
+        send_membership_email(
+            subject='Contribution Verified',
+            to_email=member.email,
+            context={
+                'title': 'Contribution Verified',
+                'message': f'Dear {member.full_name}, your contribution of £{sum(c.amount for c in contributions)} has been verified.',
+            }
+        )
+        return Response({'detail': 'Batch verified successfully.'})
+
 
 class IsAdminOrMemberOwner(BasePermission):
     """

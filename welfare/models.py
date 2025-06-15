@@ -3,6 +3,7 @@ from django.db import models
 from django.utils import timezone
 from django.contrib.auth.models import User
 from django.utils.text import slugify
+import uuid
 
 
 class AdminUser(models.Model):
@@ -120,6 +121,7 @@ class Contribution(models.Model):
     rejection_reason = models.TextField(blank=True, null=True)
     recorded_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    batch_id = models.UUIDField(default=uuid.uuid4, editable=False, db_index=True)
 
     def __str__(self):
         return f"{self.member.full_name} - {self.amount} ({self.get_status_display()})"
