@@ -299,7 +299,7 @@ class PendingMemberViewSet(viewsets.ModelViewSet):
         phone = mutable_data.get('phone_number')
         full_name = mutable_data.get('full_name')
 
-        # 🚨 Check if email or phone or full_name already exists in approved members
+        # Prevent duplicates
         if Member.objects.filter(email=email).exists():
             raise ValidationError({'email': 'This email is already registered.'})
         if Member.objects.filter(phone_number=phone).exists():
@@ -307,19 +307,37 @@ class PendingMemberViewSet(viewsets.ModelViewSet):
         if Member.objects.filter(full_name__iexact=full_name).exists():
             raise ValidationError({'full_name': 'This full name is already registered.'})
 
-        # 🚨 Also check if already pending
-        if PendingMember.objects.filter(email=email).exists():
-            raise ValidationError({'email': 'This email is already pending approval.'})
-        if PendingMember.objects.filter(phone_number=phone).exists():
-            raise ValidationError({'phone_number': 'This phone number is already pending approval.'})
-        if PendingMember.objects.filter(full_name__iexact=full_name).exists():
-            raise ValidationError({'full_name': 'This full name is already pending approval.'})
 
-        # ✅ Proceed to save
-        serializer = self.get_serializer(data=mutable_data)
-        serializer.is_valid(raise_exception=True)
-        self.perform_create(serializer)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        # Auto-approve: directly create Member
+        member = Member.objects.create(
+            full_name=full_name,
+            email=email,
+            phone_number=phone,
+            address=mutable_data.get('address'),
+            profile_picture=mutable_data.get('profile_picture'),
+            status='active',
+        )
+
+        # Send welcome email
+        send_membership_email(
+            subject='Membership Approved',
+            to_email=email,
+            context={
+                'title': 'Membership Approved',
+                'message': f'Dear {full_name}, your membership has been successfully approved.',
+                'username': member.user.username,
+                'password': phone,  # or generated password
+            }
+        )
+
+        # Optionally send a notification
+        create_notification(
+            member.user,
+            "Membership Approved",
+            "Welcome aboard! Your membership is now active."
+        )
+
+        return Response({'detail': 'Member registered and auto-approved.'}, status=status.HTTP_201_CREATED)
 
     # Approve action
     @action(detail=True, methods=['post'])
