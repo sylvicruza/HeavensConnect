@@ -16,6 +16,7 @@ import os
 import dj_database_url
 from django.contrib import staticfiles
 from datetime import timedelta
+from corsheaders.defaults import default_headers
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -65,6 +66,20 @@ MIDDLEWARE = [
     'whitenoise.middleware.WhiteNoiseMiddleware',
 ]
 CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOW_HEADERS = list(default_headers) + [
+    'Authorization',
+    'Content-Type',
+    'Origin',
+]
+
+CORS_ALLOW_CREDENTIALS = True
+
+CORS_ALLOW_ORIGIN_REGEXES = [
+    r"^https://.*\.firebaseapp\.com$",
+    r"^https://.*\.web\.app$",
+    r"^android-app://.*$",      # <- Required for Flutter Android
+    r"^file://.*$",             # <- Hybrid apps or WebViews
+]
 CSRF_TRUSTED_ORIGINS = [
     "https://heavensconnect-83e8c.web.app",
     "https://heavensconnect-83e8c.firebaseapp.com"
